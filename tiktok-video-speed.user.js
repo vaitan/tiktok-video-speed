@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Tiktok Video Playback Speed & Auto Scroll
 // @namespace    http://tampermonkey.net/
-// @version      1.5
+// @version      1.6
 // @description  Automatically set TikTok regular video playback speed to DEFAULT_SPEEDx and live video to 1x when scrolling or switching videos, including live video thumbnails. Auto scroll to next video when current video ends. Skip ended live videos.
 // @author       You
 // @match        *://www.tiktok.com/*
@@ -45,9 +45,29 @@ function setVideoSpeed() {
 function setupAutoScroll() {
     let videos = document.querySelectorAll('video');
     videos.forEach(video => {
+        // Remove existing listeners to avoid duplicates
         video.removeEventListener('ended', handleVideoEnd);
+        video.removeEventListener('timeupdate', handleTimeUpdate);
+        
+        // Add new listeners
         video.addEventListener('ended', handleVideoEnd);
+        video.addEventListener('timeupdate', handleTimeUpdate);
     });
+}
+
+// New function to handle precise video ending detection
+function handleTimeUpdate() {
+    const video = this;
+    const timeRemaining = video.duration - video.currentTime;
+    
+    // Only trigger auto-scroll when video is truly at the end (less than 0.1s remaining)
+    if (timeRemaining <= 0.1 && timeRemaining > 0) {
+        // If we're this close to the end and the video is still playing,
+        // wait a tiny bit more to ensure it's really ending
+        if (!video.paused && !video.ended) {
+            return;
+        }
+    }
 }
 
 function isEndedLiveVideo(videoElement) {
@@ -92,6 +112,12 @@ function findNextValidVideo(currentContainer) {
 }
 
 function handleVideoEnd() {
+    // Double-check that video is really ended
+    if (!this.ended && (this.duration - this.currentTime) > 0.2) {
+        console.log('Video not truly ended, ignoring scroll event');
+        return;
+    }
+    
     console.log('Video ended, looking for next video...');
     
     let currentVideoContainer = this.closest('[data-e2e="recommend-list-item"]') || 
@@ -102,11 +128,14 @@ function handleVideoEnd() {
         let nextVideoContainer = findNextValidVideo(currentVideoContainer);
         
         if (nextVideoContainer) {
-            nextVideoContainer.scrollIntoView({ 
-                behavior: 'smooth',
-                block: 'center'
-            });
-            console.log('Scrolled to next valid video');
+            // Small delay to ensure smooth transition
+            setTimeout(() => {
+                nextVideoContainer.scrollIntoView({ 
+                    behavior: 'smooth',
+                    block: 'center'
+                });
+                console.log('Scrolled to next valid video');
+            }, 100);
         } else {
             console.log('No next valid video found, trying to load more...');
             window.scrollBy(0, window.innerHeight);
