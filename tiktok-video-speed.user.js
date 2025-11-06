@@ -135,7 +135,7 @@ function handleVideoEnd() {
                     block: 'center'
                 });
                 console.log('Scrolled to next valid video');
-            }, 800);
+            }, 2000);
         } else {
             console.log('No next valid video found, trying to load more...');
             window.scrollBy(0, window.innerHeight);
