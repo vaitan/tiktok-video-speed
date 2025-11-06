@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Tiktok Video Playback Speed & Auto Scroll
 // @namespace    http://tampermonkey.net/
-// @version      1.6
+// @version      1.7
 // @description  Automatically set TikTok regular video playback speed to DEFAULT_SPEEDx and live video to 1x when scrolling or switching videos, including live video thumbnails. Auto scroll to next video when current video ends. Skip ended live videos.
 // @author       You
 // @match        *://www.tiktok.com/*
@@ -55,18 +55,35 @@ function setupAutoScroll() {
     });
 }
 
-// New function to handle precise video ending detection
+// Track which videos we've already handled to prevent duplicate triggers
+const handledVideos = new WeakSet();
+
 function handleTimeUpdate() {
     const video = this;
+    
+    // Skip if we've already handled this video
+    if (handledVideos.has(video)) {
+        return;
+    }
+    
     const timeRemaining = video.duration - video.currentTime;
     
-    // Only trigger auto-scroll when video is truly at the end (less than 0.1s remaining)
-    if (timeRemaining <= 0.1 && timeRemaining > 0) {
-        // If we're this close to the end and the video is still playing,
-        // wait a tiny bit more to ensure it's really ending
-        if (!video.paused && !video.ended) {
+    // More precise ending detection with larger buffer
+    if (timeRemaining <= 0.5 && timeRemaining > 0) {
+        console.log(`Video near end: ${timeRemaining.toFixed(2)}s remaining`);
+        
+        // If we're close to the end but video is still playing normally, wait
+        if (!video.paused && !video.ended && timeRemaining > 0.1) {
             return;
         }
+        
+        // Mark as handled to prevent duplicate processing
+        handledVideos.add(video);
+        
+        // Longer delay to ensure video is truly ending
+        setTimeout(() => {
+            handleVideoEnd.call(video);
+        }, 300); // Increased from 100ms to 300ms
     }
 }
 
@@ -112,30 +129,38 @@ function findNextValidVideo(currentContainer) {
 }
 
 function handleVideoEnd() {
-    // Double-check that video is really ended
-    if (!this.ended && (this.duration - this.currentTime) > 0.2) {
+    const video = this;
+    
+    // Extra verification that video is really ended
+    if (!video.ended && (video.duration - video.currentTime) > 0.5) {
         console.log('Video not truly ended, ignoring scroll event');
+        handledVideos.delete(video); // Reset handling status
         return;
     }
     
     console.log('Video ended, looking for next video...');
     
-    let currentVideoContainer = this.closest('[data-e2e="recommend-list-item"]') || 
-                               this.closest('[data-e2e="video-item"]') ||
-                               this.closest('div[class*="DivVideoContainer"]');
+    let currentVideoContainer = video.closest('[data-e2e="recommend-list-item"]') || 
+                               video.closest('[data-e2e="video-item"]') ||
+                               video.closest('div[class*="DivVideoContainer"]');
     
     if (currentVideoContainer) {
         let nextVideoContainer = findNextValidVideo(currentVideoContainer);
         
         if (nextVideoContainer) {
-            // Small delay to ensure smooth transition
+            // Increased delay for smoother transition
             setTimeout(() => {
                 nextVideoContainer.scrollIntoView({ 
                     behavior: 'smooth',
                     block: 'center'
                 });
                 console.log('Scrolled to next valid video');
-            }, 100);
+                
+                // Reset handling status after successful scroll
+                setTimeout(() => {
+                    handledVideos.delete(video);
+                }, 2000);
+            }, 500); // Increased from 100ms to 500ms
         } else {
             console.log('No next valid video found, trying to load more...');
             window.scrollBy(0, window.innerHeight);
@@ -149,16 +174,26 @@ function handleVideoEnd() {
                     });
                     console.log('Found valid video after loading more');
                 }
-            }, 1000);
+                
+                // Reset handling status
+                setTimeout(() => {
+                    handledVideos.delete(video);
+                }, 2000);
+            }, 1500);
         }
     } else {
         console.log('Video container not found, scrolling down...');
         setTimeout(() => {
             window.scrollBy(0, window.innerHeight);
+            
+            // Reset handling status
+            setTimeout(() => {
+                handledVideos.delete(video);
+            }, 2000);
         }, 1500);
     }
     
-    setTimeout(setVideoSpeed, 500);
+    setTimeout(setVideoSpeed, 800);
     setTimeout(setupAutoScroll, 1500);
 }
 
@@ -178,7 +213,7 @@ function handleScroll() {
     setTimeout(() => {
         setVideoSpeed();
         setupAutoScroll();
-    }, 1);
+    }, 100);
 }
 
 window.addEventListener('scroll', handleScroll);
@@ -205,7 +240,7 @@ const observer = new MutationObserver((mutations) => {
         setTimeout(() => {
             setVideoSpeed();
             setupAutoScroll();
-        }, 100);
+        }, 300);
     }
 });
 
@@ -217,4 +252,4 @@ observer.observe(document.body, {
 setInterval(() => {
     setVideoSpeed();
     setupAutoScroll();
-}, 1000);
+}, 2000);
