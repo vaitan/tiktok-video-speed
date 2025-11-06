@@ -135,7 +135,7 @@ function handleVideoEnd() {
                     block: 'center'
                 });
                 console.log('Scrolled to next valid video');
-            }, 2000);
+            }, 100);
         } else {
             console.log('No next valid video found, trying to load more...');
             window.scrollBy(0, window.innerHeight);
@@ -153,7 +153,9 @@ function handleVideoEnd() {
         }
     } else {
         console.log('Video container not found, scrolling down...');
-        window.scrollBy(0, window.innerHeight);
+        setTimeout(() => {
+            window.scrollBy(0, window.innerHeight);
+        }, 1000);
     }
     
     setTimeout(setVideoSpeed, 500);
