@@ -69,7 +69,7 @@ function handleTimeUpdate() {
     const timeRemaining = video.duration - video.currentTime;
     
     // More precise ending detection with larger buffer
-    if (timeRemaining <= 0.01 && timeRemaining > 0) {
+    if (timeRemaining <= 0.01) {
         console.log(`Video near end: ${timeRemaining.toFixed(2)}s remaining`);
         
         // If we're close to the end but video is still playing normally, wait
