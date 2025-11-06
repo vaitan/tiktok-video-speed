@@ -159,7 +159,7 @@ function handleVideoEnd() {
     }
     
     setTimeout(setVideoSpeed, 500);
-    setTimeout(setupAutoScroll, 500);
+    setTimeout(setupAutoScroll, 1500);
 }
 
 function initializeScript() {
