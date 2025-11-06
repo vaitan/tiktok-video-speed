@@ -155,7 +155,7 @@ function handleVideoEnd() {
         console.log('Video container not found, scrolling down...');
         setTimeout(() => {
             window.scrollBy(0, window.innerHeight);
-        }, 1000);
+        }, 1500);
     }
     
     setTimeout(setVideoSpeed, 500);
