@@ -83,7 +83,7 @@ function handleTimeUpdate() {
         // Longer delay to ensure video is truly ending
         setTimeout(() => {
             handleVideoEnd.call(video);
-        }, 1000); // Increased from 100ms to 300ms
+        }, 1500); // Increased from 100ms to 300ms
     }
 }
 
